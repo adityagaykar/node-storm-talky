@@ -9,63 +9,45 @@ firebase.initializeApp({
   databaseURL: "https://talky-9a224.firebaseio.com"
 });
 var db = firebase.database()
-// var spoutKeyPrev = null
-// var spoutKeyCurr = null
-
 
 var readRequest = (function (){
-
-	return (
-		storm.spout(function(sync) {
-			var self = this
-			var ref = db.ref("/")	
-			var request = null
-			ref.on("child_added", function(record, prevKey){
-				record.ref.limitToLast(1).on("child_added",function(snapshot, prevKey){
-					var isBotTask = snapshot.child("for").val()
-					if(isBotTask){
-						var process = snapshot.child("process").val()
-						if(process != "done"){
-							request = snapshot.ref.path.toString()				
-							//console.log("request updated : "+request);
-							// snapshot.ref.update({
-							// 	"process" : "done"
-							// })
+	var setListener = true
+	return (		
+		storm.spout(function(sync) {			
+			var self = this								
+			if(setListener){
+				setListener = false			
+				var ref = db.ref("/")
+				ref.on("child_added", function(record, prevKey){
+					record.ref.limitToLast(1).on("child_added",function(snapshot, prevKey){
+						var isBotTask = snapshot.child("for").val()
+						if(isBotTask == "news"){
+							var process = snapshot.child("process").val()
+							if(process == "not done"){																
+								var request =snapshot.ref.path.toString()				
+								if(request != null){
+									var news_request = request	
+									self.emit([news_request])							
+									var refPath = request
+									request = null										
+									ref = db.ref(refPath)
+									ref.update({
+										process : "spout emitted: "+refPath
+									})	
+									sync()													
+								}																																															
+							}						
 						}
-					}
-				})	
-
-			})
+					})	
+				})			
+			}						
 			setTimeout(function() {
 				//just wait		
-				// console.log("request : "+request);
-				if(request != null){	
-					self.emit([request])	
-					ref = db.ref(request)
-					ref.update({
-						process : "spout emitted "
-					})		
-					request = null
-					sync()
-				}							
-				sync()						
-			}, 1000)
-		}).declareOutputFields(["request"])
+				sync()				
+			}, 100)
+		}).declareOutputFields(["news_request"])
 	)
-
 })()
-// var readRequest = storm.basicbolt(function(data) {
-// 	var request = data.tuple[0]
-// 	getArticles(function(err, articles){
-// 		var payload = null
-// 		if(!err)
-// 			payload = [request, articles]
-// 		else
-// 			payload = [request, []]
-// 		this.emit([payload])		
-// 	})
-	
-// }).declareOutputFields(["payload"])
 
 
 var getRSSFeed = (function (){
@@ -85,74 +67,51 @@ var getRSSFeed = (function (){
 						if(articles.length > 0){
 							callback(null, articles)							
 						} else {
-							callback("No articles received")
+							callback("<br/>No articles received")
 						}
 					}
 				})
 			}
-			if(request != null)		
-				getArticles(function(err, articles){					
-					
-					var payload = request+"#@#"+JSON.stringify(articles)
-					self.emit([payload])
-					ref.update({
-						process: "getRSSFeedEmit " + JSON.stringify(articles)
-					})	
-					var ref = db.ref(request)
-					
-					
-					for(article of articles){
-						ref.parent.push.set({
-							msg : article.title,
-							name : "NewsBot"
+			var payload = "test"			
+			if(request != null)	{					
+				getArticles(function(err, articles){															
+					var ref = db.ref(request)		
+					if(!err){
+						ref.update({
+							process: "getRSSFeedEmit " + JSON.stringify(articles)
 						})	
-					}
-					ref.update({
-						process : "done"
-					})	
-													
+						payload = "News Headlines from hindustantimes"
+						for(article of articles){
+							payload += '<br/><br/><a href="'+article.link+'">'+article.title+"<a/>"	
+						}											
+						ref.parent.push().set({
+							msg : payload,
+							name : "NewsBot"
+						})															
+					} else {
+						ref.parent.push().set({
+							msg : "ops, something went wrong sorry!",
+							name : "NewsBot"
+						})															
+					}	
+					
 				})
-			
-		}).declareOutputFields(["payload"])
+			}		
+			self.emit([request, payload])																	
+		}).declareOutputFields(["request","payload"])
 	)
 })()
 
-var submitNewsToFirebase = (function (){
-	return (
-		storm.basicbolt(function(data) {
-			var payload = data.tuple[0]
-			payload = payload.toString().split("#@#")
-			var fbpath = payload[0]
-			var articles = payload[1]
-			articles = JSON.parse(articles)
-
-			var ref = db.ref(fbpath)
-			
-			ref.update({
-				process : "done"
-			})
-			for(article of articles){
-				ref.parent.push.set({
-					msg : article.title,
-					name : "NewsBot"
-				})	
-			}											
-			var count = 1
-			this.emit([count])
-		}).declareOutputFields(["count"])
-	)
-})() 
-
 var builder = storm.topologybuilder()
-builder.setSpout('request', readRequest)
-builder.setBolt('getRSSFeed', getRSSFeed, 2).shuffleGrouping('request')
-builder.setBolt('submitNewsToFirebase', submitNewsToFirebase, 2).fieldsGrouping('getRSSFeed', ['payload'])
+builder.setSpout('news_request', readRequest)
+builder.setBolt('getRSSFeed', getRSSFeed, 2).shuffleGrouping('news_request')
 
 var nimbus = process.argv[2]
 var options = {
-	config: {'topology.debug': true, 'topology.workers' : 6},
+	config: {'topology.debug': true, 'topology.workers' : 3},
 	
 }
+
 var topology = builder.createTopology()
 
 if (nimbus == null) {
@@ -167,22 +126,3 @@ if (nimbus == null) {
 	storm.submit(topology, options).fail(console.error)
 }
 
-// var gsearch = (function() {
-// 	var links = {}
-// 	return storm.basicbolt(function(data) {
-// 		var word = data.tuple[0]		
-// 		var url = "https://www.googleapis.com/customsearch/v1?q="+word+"&num=4&cx=008895008702538367069:jp3tqzd1kde&key=AIzaSyDKGN9uMnwTurIsWgz0TTjhJ9aRVUXLcCk";
-// 		var curr = this;
-// 		requestify.get(url).then(function(response) {
-// 		    // Get the response body
-// 		    var data = response.getBody();
-// 		    var items = data.items;
-// 		    if(links[word] == null)
-// 		    	links[word] = [];
-// 		    for(item of items){
-// 		    	links[word].push(item.link);
-// 		    }
-// 		    curr.emit([word, links])
-// 		});				
-// 	}).declareOutputFields(["word", "links"])
-// })()

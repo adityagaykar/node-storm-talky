@@ -1,33 +1,70 @@
 var firebase = require('firebase')
-
+var requestify = require('requestify')
+var request = require('request')
 firebase.initializeApp({
   databaseURL: "https://talky-9a224.firebaseio.com"
 });
 
+var getGoogleUrl = function(word){
+	return "https://www.googleapis.com/customsearch/v1?q="+word+"&num=4&cx=008895008702538367069:jp3tqzd1kde&key=AIzaSyDKGN9uMnwTurIsWgz0TTjhJ9aRVUXLcCk";
+}
 var db = firebase.database()
 var ref = db.ref("/")
 
-ref.on("child_added", function(record, prevKey){
-	// console.log("Adding listener to : "+record.key)	
-	record.ref.limitToLast(1).on("child_added",function(snapshot, prevKey){
-		var isBotTask = snapshot.child("for").val()
-		if(isBotTask){
-			var process = snapshot.child("process").val()
-			if(process == "done"){
-				console.log("This chatbot task is done!")
-			}
-		}
-		console.log("test" + snapshot.key)
-	})	
-})
+// ref.on("child_added", function(record, prevKey){
+// 	// console.log("Adding listener to : "+record.key)	
+// 	record.ref.on("child_added",function(snapshot, prevKey){
+// 		var isBotTask = snapshot.child("for").val()
+// 		if(isBotTask){
+// 			var process = snapshot.child("process").val()
+// 			if(process == "done"){
+// 				console.log("This chatbot task is done!")
+// 			}
+// 		}
+// 		console.log("test" + snapshot.key)
+// 	})	
+// })
 
-ref = db.ref("/Bakul")
+// ref = db.ref("/Chatbots")
 
-console.log(ref.parent.push)
+// ref = ref.set({"chatbots" : ""})
+// console.log("OK"+ " " + ref)
 
-console.log("OK"+ " " + ref.path.toString())
-
+var l = "hello world"
+console.log(encodeURI(l))
 setTimeout(function(){ console.log("test")}, 100);
+
+var getGoogleResults = function(word, callback){
+	var url = getGoogleUrl(word)
+	console.log("makeing requestify "+url )
+	requestify.get(url).then(function(response) {
+	    // Get the response body
+	    console.log("requestify "+response )
+	    var data = response.getBody();
+	    if(data){
+	    	var items = data.items;				    
+	    	if(items){
+	    		callback(null, items)
+	    	} else {
+	    		callback("ops, something went wrong")
+	    	}
+	    } else {
+	    	callback("ops, something went wrong")
+	    }				    				    
+	});				
+}
+
+// getGoogleResults("apple", function(err, results){															
+// 	console.log( results);
+// 	console.log(err);
+// })
+
+request({url : getGoogleUrl("apple"), json: true}, function(err,response, data){
+	if(err)
+		console.log(err)
+	else if(data)
+		console.log(data)
+})
 
 // firebase.initializeApp({
 //   serviceAccount: {
