@@ -13,7 +13,7 @@ firebase.initializeApp({
 var db = firebase.database()
 
 	
-var readRequest = (function (){
+var botTaskSpout = (function (){
 	var setListener = true
 	return (		
 		storm.spout(function(sync) {			
@@ -27,28 +27,13 @@ var readRequest = (function (){
 						if(isBotTask == "weather"){
 							var process = snapshot.child("process").val()
 							if(process == "not done"){
-								var arr = snapshot.child("msg").val();
-								arr = arr.trim()
-								arr = arr.substring(arr.indexOf("#"))
-								arr = arr.trim()
-								var city = "no city"
-								if(arr && arr.indexOf(" ") != -1)
-									city = arr.substring(arr.indexOf(" ")+1)
-								//city = encodeURI(city)
-								if(process == "not done"){
-									var msg = city+"#@#"+snapshot.ref.path.toString()				
-									var request = msg;
-									if(request != null){	
-										self.emit([request])							
-										var refPath = request.split("#@#")[1]
-										request = null										
-										ref = db.ref(refPath)
-										ref.update({
-											process : "spout emitted: "+refPath
-										})	
-										sync()													
-									}																																							
-								}
+								var refPath=snapshot.ref.path.toString()
+								var msg = snapshot.child("msg").val()
+								snapshot.ref.update({
+									process : "Task emitted"
+								})
+								self.emit([msg,refPath])
+								sync()
 							}						
 						}
 					})	
@@ -58,18 +43,34 @@ var readRequest = (function (){
 				//just wait		
 				sync()				
 			}, 100)
-		}).declareOutputFields(["request"])
+		}).declareOutputFields(["msg", "refPath"])
 	)
 })()
 
 
-
-var getWeatherFeed = (function (){
+var extractCityBolt = (function(){	
 	return (
-		storm.basicbolt(function(data) {
-			var request = data.tuple[0]		
-			var city = request.split("#@#")[0]
-			var refPath = request.split("#@#")[1]
+		storm.basicbolt(function(data){			
+			var msg = data.tuple[0]
+			var refPath = data.tuple[1]
+			var snapshot = db.ref(refPath)											
+			msg = msg.trim()
+			var city = "no city"
+			if(msg && msg.indexOf(" ") != -1)
+				city = msg.substring(msg.indexOf(" ")+1)									
+			snapshot.update({
+				process : "city extracted: "+city
+			})
+			this.emit([city, refPath])																																																											
+		}).declareOutputFields(["city","refPath"])
+	)
+})()
+
+var getWeatherFeedBolt = (function (){
+	return (
+		storm.basicbolt(function(data) {			
+			var city = data.tuple[0]
+			var refPath = data.tuple[1]
 			var ref = db.ref(refPath)	
 			var self = this
 			ref.update({
@@ -91,9 +92,8 @@ var getWeatherFeed = (function (){
 				// callback(null, data)
 
 			}
-			if(request != null && city != "no city")		
-				getWeather(function(err, weatherData){															
-					var payload = refPath+"#@#"+JSON.stringify(weatherData)					
+			if(city != "no city")		
+				getWeather(function(err, weatherData){																				
 					var ref = db.ref(refPath)					
 					ref.update({
 						process: "getWeather" + JSON.stringify(weatherData)
@@ -126,15 +126,16 @@ var getWeatherFeed = (function (){
 				})
 			}
 
-			var payload = "test"
+			var payload = city
 			self.emit([payload])
 		}).declareOutputFields(["payload"])
 	)
 })()
 
 var builder = storm.topologybuilder()
-builder.setSpout('request', readRequest)
-builder.setBolt('getWeatherFeed', getWeatherFeed, 2).shuffleGrouping('request')
+builder.setSpout('botTaskSpout', botTaskSpout)
+builder.setBolt('extractCityBolt', extractCityBolt, 2).shuffleGrouping('botTaskSpout')
+builder.setBolt('getWeatherFeedBolt', getWeatherFeedBolt, 2).fieldsGrouping('extractCityBolt',['city'])
 
 var nimbus = process.argv[2]
 var options = {
