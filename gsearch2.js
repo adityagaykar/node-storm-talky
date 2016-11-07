@@ -56,6 +56,8 @@ var extractQueryBolt = (function(){
 			var refPath = data.tuple[1]
 			var snapshot = db.ref(refPath)											
 			msg = msg.trim()
+			msg = msg.substring(msg.indexOf("#"))
+			msg = msg.trim()
 			var query = "no query"
 			if(msg && msg.indexOf(" ") != -1)
 				query = msg.substring(msg.indexOf(" ")+1)									
@@ -131,7 +133,7 @@ builder.setBolt('getGoogleFeedBolt', getGoogleFeedBolt, 2).fieldsGrouping('extra
 
 var nimbus = process.argv[2]
 var options = {
-	config: {'topology.debug': true, 'topology.workers' : 3},	
+	config: {'topology.debug': true, 'topology.workers' : 1},	
 }
 
 var topology = builder.createTopology()

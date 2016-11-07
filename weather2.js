@@ -54,6 +54,8 @@ var extractCityBolt = (function(){
 			var msg = data.tuple[0]
 			var refPath = data.tuple[1]
 			var snapshot = db.ref(refPath)											
+			msg = msg.trim()			
+			msg = msg.substring(msg.indexOf("#"))
 			msg = msg.trim()
 			var city = "no city"
 			if(msg && msg.indexOf(" ") != -1)
@@ -139,7 +141,7 @@ builder.setBolt('getWeatherFeedBolt', getWeatherFeedBolt, 2).fieldsGrouping('ext
 
 var nimbus = process.argv[2]
 var options = {
-	config: {'topology.debug': false, 'topology.workers' : 2},
+	config: {'topology.debug': false, 'topology.workers' : 1},
 	
 }
 var topology = builder.createTopology()

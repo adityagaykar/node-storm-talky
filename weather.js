@@ -138,7 +138,7 @@ builder.setBolt('getWeatherFeed', getWeatherFeed, 2).shuffleGrouping('request')
 
 var nimbus = process.argv[2]
 var options = {
-	config: {'topology.debug': false, 'topology.workers' : 2},
+	config: {'topology.debug': false, 'topology.workers' : 1},
 	
 }
 var topology = builder.createTopology()

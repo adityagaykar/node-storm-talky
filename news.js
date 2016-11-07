@@ -108,7 +108,7 @@ builder.setBolt('getRSSFeed', getRSSFeed, 2).shuffleGrouping('news_request')
 
 var nimbus = process.argv[2]
 var options = {
-	config: {'topology.debug': true, 'topology.workers' : 3},
+	config: {'topology.debug': true, 'topology.workers' : 1},
 	
 }
 
