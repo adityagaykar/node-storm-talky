@@ -11,7 +11,8 @@ RUN apt-get update -qq \
 RUN pip --no-cache-dir install \
     pandas \
     scikit-learn \
-    statsmodels
+    statsmodels \
+    nltk
 
 # install your app
 ADD $PWD/src /src
