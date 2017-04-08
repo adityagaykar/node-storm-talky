@@ -18,3 +18,5 @@ RUN pip --no-cache-dir install \
 ADD $PWD/src /src
 RUN chmod +x /src/loadmodel_predict.py
 
+WORKDIR /src
+
