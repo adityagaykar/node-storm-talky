@@ -17,7 +17,7 @@ RUN pip --no-cache-dir install \
 # install your app
 ADD $PWD/src /src
 RUN chmod +x /src/loadmodel_predict.py
-RUN python -c "import nltk;nltk.set_proxy('http://10.4.20.103:8080'); nltk.download('all')"
+RUN python -m nltk.downloader punkt
 
 
 WORKDIR /src
