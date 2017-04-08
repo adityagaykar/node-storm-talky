@@ -150,7 +150,8 @@ history = model.fit(X_train, Y_train, batch_size=batchSize, nb_epoch=num_epochs,
           verbose=1, shuffle=True, validation_data=(X_test, Y_test))
 
 res = model.predict(X_test, verbose=0)
-for test,res1 in zip(res,Y_test):
-    
-    print "Predicted : ",classes[np.argmax(test)]," | Actual : ", classes[np.argmax(res1)]
+# for test,res1 in zip(res,Y_test):    
+#     print "Predicted : ",classes[np.argmax(test)]," | Actual : ", classes[np.argmax(res1)]
+for test,res2,res1 in zip(res,test_data, Y_test):
+    print "Query: ",res2[0]," | Predicted : ",classes[np.argmax(test)]," | Actual : ", classes[np.argmax(res1)]
 

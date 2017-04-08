@@ -2,7 +2,7 @@ var firebase = require('firebase')
 var requestify = require('requestify')
 var request = require('request')
 firebase.initializeApp({
-  databaseURL: "https://talky-9a224.firebaseio.com"
+  databaseURL: "https://marcefirebasechat-57189.firebaseio.com"
 });
 
 var getGoogleUrl = function(word){
@@ -10,6 +10,28 @@ var getGoogleUrl = function(word){
 }
 var db = firebase.database()
 var ref = db.ref("/")
+
+ref.on("child_added", function(record, prevKey){
+	record.ref.limitToLast(1).on("child_added",function(snapshot, prevKey){
+
+		if(snapshot.child("botbutton").val() == "True"){			
+			var process = snapshot.child("process").val()
+			// snapshot.ref.update({
+			// 	process : "Processing task"
+			// })			
+			if(process == "Not Done"){								
+				var refPath=snapshot.ref.path.toString()
+				var msg = snapshot.child("message").val()
+				console.log(">"+refPath);
+				snapshot.ref.update({
+					process : "Task emitted"
+				})
+				// self.emit([msg,refPath])
+				// sync()																																																						
+			}
+		}																									
+	})	
+})
 
 // ref.on("child_added", function(record, prevKey){
 // 	// console.log("Adding listener to : "+record.key)	
@@ -30,9 +52,9 @@ var ref = db.ref("/")
 // ref = ref.set({"chatbots" : ""})
 // console.log("OK"+ " " + ref)
 
-var l = "hello world"
-console.log(encodeURI(l))
-setTimeout(function(){ console.log("test")}, 100);
+// var l = "hello world"
+// console.log(encodeURI(l))
+// setTimeout(function(){ console.log("test")}, 100);
 
 var getGoogleResults = function(word, callback){
 	var url = getGoogleUrl(word)
@@ -59,12 +81,12 @@ var getGoogleResults = function(word, callback){
 // 	console.log(err);
 // })
 
-request({url : getGoogleUrl("apple"), json: true}, function(err,response, data){
-	if(err)
-		console.log(err)
-	else if(data)
-		console.log(data)
-})
+// request({url : getGoogleUrl("apple"), json: true}, function(err,response, data){
+// 	if(err)
+// 		console.log(err)
+// 	else if(data)
+// 		console.log(data)
+// })
 
 // firebase.initializeApp({
 //   serviceAccount: {
