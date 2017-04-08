@@ -24,11 +24,11 @@ stemmer = LancasterStemmer()
 
 training_data = []
 
-with open("train.data") as f:
+with open("train_new.data") as f:
     data = f.read();
     data = data.split("\n")
-    data = [ i.split(",") for i in data ]
-    data = [ [i.strip("\"").lower() for i in line] for line in data]
+    data = [ i.split("\",\"") for i in data ]
+    data = [ [i.strip("\",").lower() for i in line] for line in data]
     for line in data:
         training_data.append({"class":line[1],"sentence":line[0]})
 
