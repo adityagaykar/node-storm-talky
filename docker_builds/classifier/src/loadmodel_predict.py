@@ -16,7 +16,7 @@ from keras.layers import Dense, Dropout, Activation, Flatten
 from keras.layers import Convolution2D, MaxPooling2D
 from keras.optimizers import SGD
 from keras.utils import np_utils
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 from keras import backend as K
 K.set_image_dim_ordering('th')
 
