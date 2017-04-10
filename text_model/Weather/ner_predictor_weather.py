@@ -1,5 +1,6 @@
 import nltk 
-from urllib.request import urlopen
+#from urllib.request import urlopen
+from urllib2 import urlopen
 import json
 import sys
 
@@ -88,5 +89,5 @@ for city in places:
         print("Did you mean: "+cityName)
 
     print ("The Weather Condition of "+cityName+" is: ")
-    print ("Current Temperature: "+str(temp_current)+str(degree_sign))
+    print ("Current Temperature: "+str(temp_current))
     print ("Type: "+description+" "+emoji)
