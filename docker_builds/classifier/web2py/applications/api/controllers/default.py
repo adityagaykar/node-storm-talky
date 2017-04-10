@@ -21,7 +21,9 @@ def index():
     return dict(message=T('Welcome to web2py!'))
 
 def classify():
-    
+    message = request.vars["message"]
+    bot = bot_classifier.classify(message)
+    return response.json({"bot" : bot})
 
 def dashboard():
     services = SQLFORM.smartgrid(db.service,user_signature=False, create=False)#db(db.service).select()
