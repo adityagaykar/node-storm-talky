@@ -14,11 +14,11 @@ RUN pip --no-cache-dir install \
     statsmodels \
     nltk
 
+EXPOSE 9000
 # install your app
-ADD $PWD/src /src
-RUN chmod +x /src/loadmodel_predict.py
+ADD $PWD/web2py /web2py
 RUN python -m nltk.downloader punkt
+WORKDIR /web2py
+CMD python web2py.py -a test1234 -i 127.0.0.1 -p 9000
 
-
-WORKDIR /src
 

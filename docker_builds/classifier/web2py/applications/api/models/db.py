@@ -39,7 +39,7 @@ if not request.env.web2py_runtime_gae:
                 pool_size=1,
                 check_reserved=['all'])
     else:
-        db = DAL(myconf.take('db.uri'),pool_size=myconf.take('db.pool_size', cast=int), check_reserved=['all'])
+        db = DAL('sqlite://api.sqlite',pool_size=myconf.take('db.pool_size', cast=int), check_reserved=['all'])
         #
     # db = DAL(myconf.get('db.uri'),
     #          pool_size=myconf.get('db.pool_size', cast=int),             
