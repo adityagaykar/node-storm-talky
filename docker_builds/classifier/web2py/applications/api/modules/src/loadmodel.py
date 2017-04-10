@@ -1,3 +1,5 @@
+
+from gluon import current
 # use natural language toolkit
 import nltk
 from nltk.stem.lancaster import LancasterStemmer
@@ -24,10 +26,12 @@ class classifier:
     def __init__(self):        
         self.words=[]
         self.classes=[]
-        with open('data', 'r') as f:
+        data_file = open(os.path.join(current.request.folder, 'private', 'data'))
+        classes_file = open(os.path.join(current.request.folder, 'private', 'classes'))
+        with data_file as f:
              self.words = json.load(f)
 
-        with open('classes', 'r') as f:
+        with classes_file as f:
              self.classes = json.load(f)
         self.model = self.get_model()
         
@@ -69,7 +73,7 @@ class classifier:
         lr_weight_decay = 0.95
 
         sgd = SGD(lr=learningRate, decay = lr_weight_decay)
-        model.load_weights('keras_w') 
+        model.load_weights(os.path.join(current.request.folder, 'private', 'keras_w'))
         model.compile(loss='categorical_crossentropy', optimizer='sgd',metrics=['accuracy'])
         return model
 
