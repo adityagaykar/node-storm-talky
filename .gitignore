@@ -1,2 +1,3 @@
 node_modules
 *.pyc
+docker_builds/classifier/web2py/applications/api/errors/*

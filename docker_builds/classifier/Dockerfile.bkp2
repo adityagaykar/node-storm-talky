@@ -1,0 +1,25 @@
+FROM ubuntu:14.04 
+ENV http_proxy http://10.4.20.103:8080
+ENV https_proxy http://10.4.20.103:8080
+RUN apt-get update && apt-get install python2.7 -y && apt-get install python-pip -y 
+RUN wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh
+RUN bash Miniconda3-latest-Linux-x86_64.sh
+RUN pip install -U pip setuptools
+# install dependencies from debian packages
+RUN apt-get install --no-install-recommends -y \
+    python-numpy \
+    python-matplotlib \
+    python-scipy
+# install dependencies from python packages
+RUN pip --no-cache-dir install \
+    pandas \
+    scikit-learn \
+    statsmodels \
+    nltk
+
+# install your app
+RUN python -m nltk.downloader punkt
+RUN pip install Theano 
+RUN pip install keras
+
+
