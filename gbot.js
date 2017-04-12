@@ -8,6 +8,10 @@ var getGoogleUrl = function(word){
 	return "https://www.googleapis.com/customsearch/v1?q="+word+"&num=4&cx=008895008702538367069:jp3tqzd1kde&key=AIzaSyDKGN9uMnwTurIsWgz0TTjhJ9aRVUXLcCk";
 }
 
+var getClassifierUrl = function(){
+	return "http://slave1:8000/api/default/classify";
+}
+
 firebase.initializeApp({
   databaseURL: "https://marcefirebasechat-57189.firebaseio.com"
 });
@@ -17,9 +21,30 @@ var gbotTaskSpout = (function (){
 	var setListener = true
 	return (		
 		storm.spout(function(sync) {			
-			var self = this								
+			var self = this										
 			if(setListener){
 				setListener = false			
+				var getClassifierResult = function(word, callback){
+					var url = getClassifierUrl(word)				
+					Request({
+							headers: {'content-type' : 'application/json'},
+						    url:     url,
+						    body:    '{"message" : "'+word+'"}'						    
+						}, 
+						function(err, response, data){				
+						    if(!err){
+						    	data = JSON.parse(data)
+						    	var item = data.bot;				    
+						    	if(item){
+						    		callback(null, item)
+						    	} else {
+						    		callback("ops, something went wrong")
+						    	}
+						    } else {
+						    	callback("ops, something went wrong")
+						    }				    				    
+						});				
+				}	
 				var ref = db.ref("/")
 				ref.on("child_added", function(record, prevKey){
 					record.ref.limitToLast(1).on("child_added",function(snapshot, prevKey){
@@ -27,12 +52,20 @@ var gbotTaskSpout = (function (){
 							var process = snapshot.child("process").val();							
 							if(process == "Not Done"){								
 								var refPath=snapshot.ref.path.toString();
-								var msg = snapshot.child("message").val();
+								var msg = snapshot.child("message").val();		
 								snapshot.ref.update({
-									process : "Task emitted"
-								})
-								self.emit([msg,refPath]);
-								sync();																																																						
+										process : "Task before emit"
+									})						
+								getClassifierResult(msg, function(err, result){
+									snapshot.ref.update({
+										process : "Task emitted : "+result
+									})
+									if(err == null && result == "google"){
+										self.emit(["hello",refPath]);
+										sync();
+									}
+								});
+								
 							}
 						}																									
 					})	
