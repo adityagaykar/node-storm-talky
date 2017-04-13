@@ -5,7 +5,7 @@ var getClassifierUrl = function(){
 }
 
 var getClassifierResult = function(word, callback){
-	var url = getClassifierUrl(word)				
+	var url = getClassifierUrl()				
 	Request({
 			headers: {'content-type' : 'application/json'},
 		    url:     url,

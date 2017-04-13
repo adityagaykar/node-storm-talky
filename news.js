@@ -5,6 +5,12 @@ var firebase = require('firebase')
 var rssReader = require('feed-read')
 var news_endpoint = "http://www.hindustantimes.com/rss/topnews/rssfeed.xml"
 
+var getClassifierUrl = function(){
+	return "http://slave1:8000/api/default/classify";
+}
+
+var BOT_KEY = "google"
+
 firebase.initializeApp({
   databaseURL: "https://talky-9a224.firebaseio.com"
 });

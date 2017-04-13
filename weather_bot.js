@@ -1,25 +1,28 @@
+var Request = require('request')
 var storm = require('node-storm')
 var q = require('q')
-var requestify = require("requestify");
 var firebase = require('firebase')
-var rssReader = require('feed-read')
-var Request = require('request')
-var getGoogleUrl = function(word){
-	return "https://www.googleapis.com/customsearch/v1?q="+word+"&num=4&cx=008895008702538367069:jp3tqzd1kde&key=AIzaSyDKGN9uMnwTurIsWgz0TTjhJ9aRVUXLcCk";
+var apiURL = function(city){
+	return "http://api.openweathermap.org/data/2.5/weather?q="+city+"&units=metric&APPID=2eb05fdaeb42f99d947fa21f83a4a279"	
 }
-
 var getClassifierUrl = function(){
 	return "http://slave1:8000/api/default/classify";
 }
 
-var BOT_KEY = "google"
+var getWeatherServiceUrl = function(){
+	return "http://slave1:7000/api/v1/invoke"
+}
+var API_ACCESS_TOKEN = "acb1ddfa0835d824b560824506246a43d699fcd5d77b063d3005272e9eb6ba03"
+var BOT_KEY = "weather"
 
 firebase.initializeApp({
   databaseURL: "https://marcefirebasechat-57189.firebaseio.com"
 });
-var db = firebase.database();
 
-var gbotTaskSpout = (function (){
+var db = firebase.database()
+
+	
+var botTaskSpout = (function (){
 	var setListener = true
 	return (		
 		storm.spout(function(sync) {			
@@ -68,7 +71,7 @@ var gbotTaskSpout = (function (){
 							}
 						}
 					});				
-				})	
+				})		
 				var group_ref = db.ref("/groups")
 				group_ref.on("child_added", function(record, prevKey){
 					var message_child = record.child("message")
@@ -91,7 +94,7 @@ var gbotTaskSpout = (function (){
 							}
 						}
 					});				
-				})			
+				})				
 			}						
 			setTimeout(function() {
 				//just wait		
@@ -102,90 +105,100 @@ var gbotTaskSpout = (function (){
 })()
 
 
-var gbotExtractQueryBolt = (function(){	
+var extractCityBolt = (function(){	
 	return (
 		storm.basicbolt(function(data){			
 			var msg = data.tuple[0]
 			var refPath = data.tuple[1]
-			var snapshot = db.ref(refPath)														
-			var query = msg			
-			snapshot.update({
-				process : "query extracted: "+query
-			})
-			this.emit([query, refPath])																																																											
-		}).declareOutputFields(["query","refPath"])
+			var city = msg
+			this.emit([city, refPath])																																																											
+		}).declareOutputFields(["city","refPath"])
 	)
 })()
 
-var gbotGetGoogleFeedBolt = (function (){
+var getWeatherFeedBolt = (function (){
 	return (
 		storm.basicbolt(function(data) {			
-			var request = data.tuple[1]
-			var word = data.tuple[0]
-			var ref = db.ref(request)	
+			var msg = data.tuple[0]
+			var refPath = data.tuple[1]
+			var ref = db.ref(refPath)	
 			var self = this
 			ref.update({
-				process: "getGoogleFeed "+word+" "+request
+				process: "getWeather"
 			})
-			var getGoogleResults = function(word, callback){
-				var url = getGoogleUrl(word)				
-				Request({url: url, json: true}, function(err, response, data){				
-				    if(!err){
-				    	var items = data.items;				    
-				    	if(items){
-				    		callback(null, items)
+			var getWeather = function(message,callback){
+				var url = getWeatherServiceUrl()				
+				Request({
+					headers: {'content-type' : 'application/json'},
+				    url:     url,
+				    body:    '{"access_token" : "'+API_ACCESS_TOKEN+'", "message" : "'+message+'"}'						    
+				}, 
+				function(err, response, data){				
+				    if(!err){				    	
+				    	if(data){
+				    		callback(null, data)
 				    	} else {
 				    		callback("ops, something went wrong")
 				    	}
 				    } else {
 				    	callback("ops, something went wrong")
 				    }				    				    
-				});				
+				});
+				// var data = {"coord":{"lon":72.85,"lat":19.01},"weather":[{"id":800,"main":"Clear","description":"clear sky","icon":"01d"}],"base":"stations","main":{"temp":28.97,"pressure":1023.58,"humidity":75,"temp_min":28.97,"temp_max":28.97,"sea_level":1024.17,"grnd_level":1023.58},"wind":{"speed":5.56,"deg":329.003},"clouds":{"all":0},"dt":1478001286,"sys":{"message":0.0136,"country":"IN","sunrise":1477962550,"sunset":1478003691},"id":1275339,"name":"Mumbai","cod":200}
+				// callback(null, data)
+
 			}
-			var payload = "test"			
-			if(request != null && word != "no query")	{					
-				getGoogleResults(word, function(err, results){															
-					var ref = db.ref(request)				
-					if(err)
-						ref.update({
-							process: "getGoogleResults " + err
-						})							
+			if(msg != null)		
+				getWeather(msg,function(err, weatherData){																				
+					var ref = db.ref(refPath)					
 					ref.update({
-						process: "getGoogleResults " + JSON.stringify(results)
+						process: "getWeather" + weatherData
+					})															
+					if(weatherData){	
+						var node = ref.parent.push()					
+						node.set({
+							message : weatherData,
+							name : "WeatherBot",
+							sender : "weatherbot-id"
+						})	
+					} else {
+						var node = ref.parent.push()
+						node.set({
+							msg : "ops, sorry something went wrong :( "+err,
+							name : "WeatherBot",
+							sender : "weatherbot-id"
+						})	
+					}
+					ref.update({
+						process : "done"
 					})	
-					payload = "I have got some useful links for you :<br/>"
-					for(result of results){
-						payload += '<br/><br/><a href="'+result.link+'"> - '+result.title+"</a>"						
-					}											
-					ref.parent.push().set({
-						message : payload,
-						name : "GoogleBot",
-						sender : "gbot-id"
-					})														
+													
 				})
-			} else {
-				var ref = db.ref(request)					
-				ref.parent.push().set({
-					message : "Tell me what you are looking for... e.g #google apple",
-					name : "GoogleBot",
-					sender : "gbot-id"
+			else {
+				var node = ref.parent.push()
+				node.set({
+					message : "Hey! let me know the city name, e.g #weather Mumbai",
+					name : "WeatherBot",
+					sender : "weatherbot-id"
 				})
-			}		
-			self.emit([request, payload])																	
-		}).declareOutputFields(["request","payload"])
+			}
+
+			var payload = msg
+			self.emit([payload])
+		}).declareOutputFields(["payload"])
 	)
 })()
 
 var builder = storm.topologybuilder()
-builder.setSpout('gbotTaskSpout', gbotTaskSpout)
-builder.setBolt('gbotExtractQueryBolt', gbotExtractQueryBolt, 2).shuffleGrouping('gbotTaskSpout')
-builder.setBolt('gbotGetGoogleFeedBolt', gbotGetGoogleFeedBolt, 2).fieldsGrouping('gbotExtractQueryBolt', ['query'])
+builder.setSpout('botTaskSpout', botTaskSpout)
+builder.setBolt('extractCityBolt', extractCityBolt, 2).shuffleGrouping('botTaskSpout')
+builder.setBolt('getWeatherFeedBolt', getWeatherFeedBolt, 2).fieldsGrouping('extractCityBolt',['city'])
 
 var nimbus = process.argv[2]
 var options = {
-	config: {'topology.debug': true, 'topology.workers' : 1},	
+	config: {'topology.debug': false, 'topology.workers' : 1},
+	
 }
-
 var topology = builder.createTopology()
 
 if (nimbus == null) {
@@ -197,6 +210,5 @@ if (nimbus == null) {
 	}).fail(console.error)
 } else {
 	options.nimbus = nimbus
-	storm.submit(topology, options).fail(console.error)
+	storm.submit(topology, options).fail(console.error)	
 }
-

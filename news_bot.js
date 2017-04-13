@@ -2,24 +2,22 @@ var storm = require('node-storm')
 var q = require('q')
 var requestify = require("requestify");
 var firebase = require('firebase')
+var Request = require('request');
 var rssReader = require('feed-read')
-var Request = require('request')
-var getGoogleUrl = function(word){
-	return "https://www.googleapis.com/customsearch/v1?q="+word+"&num=4&cx=008895008702538367069:jp3tqzd1kde&key=AIzaSyDKGN9uMnwTurIsWgz0TTjhJ9aRVUXLcCk";
-}
+var news_endpoint = "http://www.hindustantimes.com/rss/topnews/rssfeed.xml"
 
 var getClassifierUrl = function(){
 	return "http://slave1:8000/api/default/classify";
 }
 
-var BOT_KEY = "google"
+var BOT_KEY = "news"
 
 firebase.initializeApp({
   databaseURL: "https://marcefirebasechat-57189.firebaseio.com"
 });
-var db = firebase.database();
+var db = firebase.database()
 
-var gbotTaskSpout = (function (){
+var readRequest = (function (){
 	var setListener = true
 	return (		
 		storm.spout(function(sync) {			
@@ -53,7 +51,7 @@ var gbotTaskSpout = (function (){
 						if(snapshot.child("botbutton").val() == "True"){
 							var process = snapshot.child("process").val();							
 							if(process == "Not Done"){								
-								var refPath=snapshot.ref.path.toString();
+								var news_request=snapshot.ref.path.toString();
 								var msg = snapshot.child("message").val();																		
 								getClassifierResult(msg, function(err, result){
 									if( err == null && result == BOT_KEY){
@@ -61,14 +59,15 @@ var gbotTaskSpout = (function (){
 											process : "Task : added bot key",
 											bot : BOT_KEY
 										})	
-										self.emit([msg,refPath]);
+										self.emit([news_request]);
 										sync();									
 									}
 								})																												
 							}
 						}
 					});				
-				})	
+				})		
+
 				var group_ref = db.ref("/groups")
 				group_ref.on("child_added", function(record, prevKey){
 					var message_child = record.child("message")
@@ -76,7 +75,7 @@ var gbotTaskSpout = (function (){
 						if(snapshot.child("botbutton").val() == "True"){
 							var process = snapshot.child("process").val();							
 							if(process == "Not Done"){								
-								var refPath=snapshot.ref.path.toString();
+								var news_request=snapshot.ref.path.toString();
 								var msg = snapshot.child("message").val();																		
 								getClassifierResult(msg, function(err, result){
 									if( err == null && result == BOT_KEY){
@@ -84,91 +83,70 @@ var gbotTaskSpout = (function (){
 											process : "Task : added bot key",
 											bot : BOT_KEY
 										})	
-										self.emit([msg,refPath]);
+										self.emit([news_request]);
 										sync();									
 									}
 								})																												
 							}
 						}
 					});				
-				})			
+				})				
 			}						
 			setTimeout(function() {
 				//just wait		
 				sync()				
 			}, 100)
-		}).declareOutputFields(["msg", "refPath"])
+		}).declareOutputFields(["news_request"])
 	)
 })()
 
-
-var gbotExtractQueryBolt = (function(){	
+var getRSSFeed = (function (){
 	return (
-		storm.basicbolt(function(data){			
-			var msg = data.tuple[0]
-			var refPath = data.tuple[1]
-			var snapshot = db.ref(refPath)														
-			var query = msg			
-			snapshot.update({
-				process : "query extracted: "+query
-			})
-			this.emit([query, refPath])																																																											
-		}).declareOutputFields(["query","refPath"])
-	)
-})()
-
-var gbotGetGoogleFeedBolt = (function (){
-	return (
-		storm.basicbolt(function(data) {			
-			var request = data.tuple[1]
-			var word = data.tuple[0]
+		storm.basicbolt(function(data) {
+			var request = data.tuple[0]
 			var ref = db.ref(request)	
 			var self = this
 			ref.update({
-				process: "getGoogleFeed "+word+" "+request
+				process: "getRSSFeed"
 			})
-			var getGoogleResults = function(word, callback){
-				var url = getGoogleUrl(word)				
-				Request({url: url, json: true}, function(err, response, data){				
-				    if(!err){
-				    	var items = data.items;				    
-				    	if(items){
-				    		callback(null, items)
-				    	} else {
-				    		callback("ops, something went wrong")
-				    	}
-				    } else {
-				    	callback("ops, something went wrong")
-				    }				    				    
-				});				
+			var getArticles = function(callback){
+				rssReader(news_endpoint, function(err, articles){
+					if(err){
+						callback(err)
+					} else {
+						if(articles.length > 0){
+							callback(null, articles)							
+						} else {
+							callback("<br/>No articles received")
+						}
+					}
+				})
 			}
 			var payload = "test"			
-			if(request != null && word != "no query")	{					
-				getGoogleResults(word, function(err, results){															
-					var ref = db.ref(request)				
-					if(err)
+			if(request != null)	{					
+				getArticles(function(err, articles){															
+					var ref = db.ref(request)		
+					if(!err){
 						ref.update({
-							process: "getGoogleResults " + err
-						})							
-					ref.update({
-						process: "getGoogleResults " + JSON.stringify(results)
-					})	
-					payload = "I have got some useful links for you :<br/>"
-					for(result of results){
-						payload += '<br/><br/><a href="'+result.link+'"> - '+result.title+"</a>"						
-					}											
-					ref.parent.push().set({
-						message : payload,
-						name : "GoogleBot",
-						sender : "gbot-id"
-					})														
-				})
-			} else {
-				var ref = db.ref(request)					
-				ref.parent.push().set({
-					message : "Tell me what you are looking for... e.g #google apple",
-					name : "GoogleBot",
-					sender : "gbot-id"
+							process: "getRSSFeedEmit " + JSON.stringify(articles)
+						})	
+						payload = "News Headlines from hindustantimes"
+						for(article of articles){
+							payload += '<br/><br/><a href="'+article.link+'">'+article.title+"<a/>"	
+						}											
+						ref.parent.push().set({
+							message : payload,
+							name : "NewsBot",
+							sender : "newsbot-id"
+						})															
+					} else {
+						ref.parent.push().set({
+							message : "ops, something went wrong sorry!",
+							name : "NewsBot",
+							sender : "newsbot-id"
+						})															
+					}	
+					
 				})
 			}		
 			self.emit([request, payload])																	
@@ -177,13 +155,13 @@ var gbotGetGoogleFeedBolt = (function (){
 })()
 
 var builder = storm.topologybuilder()
-builder.setSpout('gbotTaskSpout', gbotTaskSpout)
-builder.setBolt('gbotExtractQueryBolt', gbotExtractQueryBolt, 2).shuffleGrouping('gbotTaskSpout')
-builder.setBolt('gbotGetGoogleFeedBolt', gbotGetGoogleFeedBolt, 2).fieldsGrouping('gbotExtractQueryBolt', ['query'])
+builder.setSpout('news_request', readRequest)
+builder.setBolt('getRSSFeed', getRSSFeed, 2).shuffleGrouping('news_request')
 
 var nimbus = process.argv[2]
 var options = {
-	config: {'topology.debug': true, 'topology.workers' : 1},	
+	config: {'topology.debug': true, 'topology.workers' : 1},
+	
 }
 
 var topology = builder.createTopology()
