@@ -90,4 +90,4 @@ for city in places:
 
     print ("The Weather Condition of "+cityName+" is: ")
     print ("Current Temperature: "+str(temp_current))
-    print ("Type: "+description+" "+emoji)
+    print ("Type: "+description)#+" "+emoji)
