@@ -85,6 +85,7 @@ for city in places:
     description = response.get('weather')[0].get('description')
     weatherID = response.get('weather')[0].get('id') 
     emoji = getEmoji(weatherID)
+    cityName = cityName.encode('utf-8','ignore').decode('utf-8')
     if cityName!=city:
         sys.stdout.write("Did you mean: "+cityName+"<br/>")
 
