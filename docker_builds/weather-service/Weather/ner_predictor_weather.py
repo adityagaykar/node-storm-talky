@@ -49,10 +49,6 @@ def getEmoji(weatherID):
 #tokenized_sentences = [nltk.word_tokenize(sentence) for sentence in sentences]
 
 sample = sys.argv[1]
-sample = sample.replace("in", "of")
-sample = sample.split(" ")
-sample.remove("forecast")
-sample = ' '.join(sample)
 
 sentences = nltk.sent_tokenize(sample)
 tokenized_sentences = [nltk.word_tokenize(sentence) for sentence in sentences]
