@@ -86,8 +86,10 @@ for city in places:
     weatherID = response.get('weather')[0].get('id') 
     emoji = getEmoji(weatherID)
     if cityName!=city:
-        print("Did you mean: "+cityName)
+        sys.stdout.write("Did you mean: "+cityName+"<br/>")
 
-    print ("The Weather Condition of "+cityName+" is: ")
-    print ("Current Temperature: "+str(temp_current))
-    print ("Type: "+description)#+" "+emoji)
+    #print ("The Weather Condition of "+cityName+" is: ")
+    #print ("Current Temperature: "+str(temp_current))
+    #print ("Type: "+description)#+" "+emoji)
+    sys.stdout.write("The Weather condition of "+cityName+" is: <br/>Current Temperature: "+str(temp_current)+"<br/>Type: "+description)
+    sys.stdout.flush()
