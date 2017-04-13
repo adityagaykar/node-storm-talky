@@ -44,7 +44,16 @@ def getEmoji(weatherID):
         return defaultEmoji   # Default emoji
 
 
+#sample = sys.argv[1]
+#sentences = nltk.sent_tokenize(sample)
+#tokenized_sentences = [nltk.word_tokenize(sentence) for sentence in sentences]
+
 sample = sys.argv[1]
+sample = sample.replace("in", "of")
+sample = sample.split(" ")
+sample.remove("forecast")
+sample = ' '.join(sample)
+
 sentences = nltk.sent_tokenize(sample)
 tokenized_sentences = [nltk.word_tokenize(sentence) for sentence in sentences]
 
@@ -75,6 +84,10 @@ places=list(set(places))
 if (len(places)==0):
     places.append('Hyderabad')
 for city in places:
+    check_tmp = city
+    check_tmp.lower()
+    if "temp" in check_tmp:
+	continue
     url = "http://api.openweathermap.org/data/2.5/weather?q="+city+"&units=metric&APPID=2eb05fdaeb42f99d947fa21f83a4a279"
     data = urlopen(url).read()
     response = json.loads(data)
@@ -92,5 +105,5 @@ for city in places:
     #print ("The Weather Condition of "+cityName+" is: ")
     #print ("Current Temperature: "+str(temp_current))
     #print ("Type: "+description)#+" "+emoji)
-    sys.stdout.write("The Weather condition of "+cityName+" is: <br/>Current Temperature: "+str(temp_current)+"<br/>Type: "+description)
+    sys.stdout.write("The Weather condition of "+cityName+" is: <br/>Current Temperature: "+str(temp_current)+"<br/>Type: "+description+"<br/>")
     sys.stdout.flush()
