@@ -49,11 +49,6 @@ def getEmoji(weatherID):
 #tokenized_sentences = [nltk.word_tokenize(sentence) for sentence in sentences]
 
 sample = sys.argv[1]
-sample = sample.replace("in", "of")
-sample = sample.split(" ")
-if "forcast" in sample:
-    sample.remove("forecast")
-sample = ' '.join(sample)
 
 sentences = nltk.sent_tokenize(sample)
 tokenized_sentences = [nltk.word_tokenize(sentence) for sentence in sentences]
@@ -88,7 +83,7 @@ for city in places:
     check_tmp = city
     check_tmp.lower()
     if "temp" in check_tmp:
-        continue
+	continue
     url = "http://api.openweathermap.org/data/2.5/weather?q="+city+"&units=metric&APPID=2eb05fdaeb42f99d947fa21f83a4a279"
     data = urlopen(url).read()
     response = json.loads(data)
