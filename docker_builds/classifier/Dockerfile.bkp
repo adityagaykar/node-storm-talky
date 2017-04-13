@@ -1,0 +1,24 @@
+FROM gw000/keras:1.2.0-py2-th-cpu
+ENV HTTPS_PROXY=http://10.4.20.103:8080/
+ENV HTTP_PROXY=http://10.4.20.103:8080/
+# install dependencies from debian packages
+RUN apt-get update -qq \
+ && apt-get install --no-install-recommends -y \
+    python-numpy \
+    python-matplotlib \
+    python-scipy
+# install dependencies from python packages
+RUN pip --no-cache-dir install \
+    pandas \
+    scikit-learn \
+    statsmodels \
+    nltk
+
+EXPOSE 9000
+# install your app
+ADD $PWD/web2py /web2py
+RUN python -m nltk.downloader punkt
+WORKDIR /web2py
+CMD ["/bin/bash", "-c" ,"python /web2py/web2py.py -a test1234 -i 127.0.0.1 -p 9000"]
+
+

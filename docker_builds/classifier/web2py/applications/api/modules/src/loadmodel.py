@@ -1,3 +1,5 @@
+from gluon.custom_import import track_changes
+track_changes(True)
 
 from gluon import current
 # use natural language toolkit
@@ -8,7 +10,8 @@ import json
 import datetime
 import os
 import sys
-os.environ["THEANO_FLAGS"] = "mode=FAST_RUN,device=cpu,floatX=float32"
+#os.environ["THEANO_FLAGS"] = "mode=FAST_RUN,device=cpu,floatX=float32"
+os.environ["THEANO_FLAGS"] = "base_compiledir=/home/www-data/theano_data"
 import theano
 import keras
 import numpy as np
