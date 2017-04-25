@@ -155,7 +155,8 @@ var getWeatherFeedBolt = (function (){
 						process: "getWeather" + weatherData
 					})															
 					if(weatherData){	
-						var node = ref.parent.push()					
+						var node = ref.parent.push()
+						weatherData = weatherData.replace(/"/g, "")					
 						node.set({
 							message : weatherData,
 							name : "WeatherBot",
